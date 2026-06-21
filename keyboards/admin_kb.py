@@ -56,7 +56,7 @@ add_finally_kb = add_finally.as_markup()
 
 
 edit_product = InlineKeyboardBuilder()
-edit_product.add(InlineKeyboardButton(text="write name",callback_data="edit:set:name"))
+edit_product.add(InlineKeyboardButton(text="write name",callback_data="edit:product"))
 edit_product.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
 edit_product_kb = edit_product.as_markup()
 
