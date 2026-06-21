@@ -1,16 +1,14 @@
-import asyncio
-import aiogram
-from aiogram import Router, F
-from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
-from asyncpg import Pool
-from loguru import logger
-
 import database.admin_queries as adb
 import database.service as service
 import keyboards.admin_kb as akb
+from aiogram import F, Router
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message
+from asyncpg import Pool
+from loguru import logger
+
 
 class SetStates(StatesGroup):
     photo = State()
@@ -39,7 +37,7 @@ async def cmd_admin(message: Message,pool: Pool) -> None:
         await message.reply(text=text,reply_markup=akb.tables)
     else:
         text = "You aren't admin"
-        await message.reply(text=text)        
+        await message.reply(text=text)
         return
 
 
@@ -50,10 +48,10 @@ async def add_(callback: CallbackQuery) -> None:
     text = "Let's add a new product to the catalog! Please choose the parameter you want to set first."
 
     await callback.message.delete()
-    await callback.message.answer(text=text, reply_markup=akb.add_name_kb) 
+    await callback.message.answer(text=text, reply_markup=akb.add_name_kb)
 
 
-@admin_router.callback_query(F.data == "set:cancel")
+@admin_router.callback_query(F.data == "cancel")
 async def cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.clear()
@@ -70,12 +68,18 @@ async def name_fsm(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.delete()
     await callback.message.answer(text=text)
     await state.set_state(SetStates.name)
-    
+
 
 @admin_router.message(SetStates.name)
 async def set_name(message: Message, state: FSMContext) -> None:
-    await state.update_data(name=message.text)
-    await message.answer(text=f"Name set to: {message.text}")
+    name = message.text
+    if not name:
+        await message.answer(text="Invalid product name. Please enter a valid name.")
+        await state.clear()
+        await message.answer(text="Operation cancelled.", reply_markup=akb.add_name_kb)
+        return
+    await state.update_data(name=name)
+    await message.answer(text=f"Name set to: {name}")
     await message.answer(text="Please enter the price of the product.", reply_markup=akb.add_price_kb)
 
 
@@ -95,7 +99,7 @@ async def set_price(message: Message, state: FSMContext) -> None:
         price = float(message.text)
     except ValueError:
         await message.answer(text="Invalid price. Please enter a valid number.")
-        return 
+        return
     await state.update_data(price=price)
     await message.answer(text=f"Price set to: {price}")
     text = "Please send tags of the product."
@@ -115,11 +119,11 @@ async def tags_fsm(callback: CallbackQuery, state: FSMContext) -> None:
 @admin_router.message(SetStates.tags)
 async def set_tags(message: Message, state: FSMContext) -> None:
     await state.update_data(tags=message.text)
-    await message.answer(text=f"Tegs set to: {message.text}")
+    await message.answer(text=f"Tags set to: {message.text}")
     text = "Please enter the description of the product."
     await message.answer(text=text, reply_markup=akb.add_description_kb)
-    
-        
+
+
 
 @admin_router.callback_query(F.data == "set:description")
 async def description_fsm(callback: CallbackQuery, state: FSMContext) -> None:
@@ -132,8 +136,8 @@ async def description_fsm(callback: CallbackQuery, state: FSMContext) -> None:
 
 @admin_router.message(SetStates.description)
 async def set_description(message: Message, state: FSMContext) -> None:
-    await state.update_data(description=message.text) 
-    await message.answer(text=f"description set to: {message.text}")
+    await state.update_data(description=message.text)
+    await message.answer(text=f"Description set to: {message.text}")
     text = "Please send a photo of the product."
     await message.answer(text=text, reply_markup=akb.add_photo_kb)
 
@@ -164,7 +168,7 @@ async def set_photo(message: Message, state: FSMContext) -> None:
         await state.update_data(photo_id=photo_id)
     except TypeError:
         await message.answer(text="Invalid photo. Please enter a valid photo.")
-        return 
+        return
     await message.answer(text=f"photo set to: {photo_id}",reply_markup=akb.add_finally_kb)
     logger.debug(f"{photo_id=}, {state}")
 
@@ -189,8 +193,171 @@ async def skip_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -
 
 
 
+@admin_router.callback_query(F.data == "edit:product")
+async def edit_product(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Let's edit a product in the catalog! Please choose the parameter you want to edit first."
+    await callback.message.delete()
+    await callback.message.answer(text=text, reply_markup=akb.edit_product_kb)
+    await state.set_state(EditStatus.name)
+
+
+@admin_router.message(EditStatus.name)
+async def set_product_name(message: Message, state: FSMContext) -> None:
+    if not message.text:
+        await message.answer(text="Invalid product name. Please enter a valid name.")
+        await state.clear()
+        await message.answer(text="Operation cancelled.", reply_markup=akb.edit_product_kb)
+        return
+    await state.update_data(name=message.text)
+    await message.answer(text=f"Name set to: {message.text}")
+    text = "Please enter the price of the product."
+    await message.answer(text=text, reply_markup=akb.edit_price_kb)
 
 
 
+@admin_router.callback_query(F.data == "edit:price")
+async def edit_product_price(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Please enter the price of the product."
+    await callback.message.delete()
+    await callback.message.answer(text=text)
+    await state.set_state(EditStatus.price)
 
-    
+
+@admin_router.message(EditStatus.price)
+async def edit_price(message: Message, state: FSMContext) -> None:
+    try:
+        price = float(message.text)
+    except ValueError:
+        await message.answer(text="Invalid price. Please enter a valid number.")
+        return
+    await state.update_data(price=price)
+    await message.answer(text=f"Price set to: {price}")
+    text = "Please send tags of the product."
+    await message.answer(text=text, reply_markup=akb.edit_tags_kb)
+
+
+
+@admin_router.callback_query(F.data == "edit:tags")
+async def edit_product_tags(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Please enter the tags of the product."
+    await callback.message.delete()
+    await callback.message.answer(text=text)
+    await state.set_state(EditStatus.tags)
+
+
+@admin_router.message(EditStatus.tags)
+async def edit_tags(message: Message, state: FSMContext) -> None:
+    await state.update_data(tags=message.text)
+    await message.answer(text=f"Tags set to: {message.text}")
+    text = "Please enter the description of the product."
+    await message.answer(text=text, reply_markup=akb.edit_description_kb)
+
+
+
+@admin_router.callback_query(F.data == "edit:description")
+async def edit_product_description(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Please enter the description of the product."
+    await callback.message.delete()
+    await callback.message.answer(text=text)
+    await state.set_state(EditStatus.description)
+
+
+@admin_router.message(EditStatus.description)
+async def edit_description(message: Message, state: FSMContext) -> None:
+    await state.update_data(description=message.text)
+    await message.answer(text=f"Description set to: {message.text}")
+    text = "Please send a photo of the product."
+    await message.answer(text=text, reply_markup=akb.edit_photo_kb)
+
+
+
+@admin_router.callback_query(F.data == "edit:photo")
+async def edit_product_photo(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Please send the photo of the product."
+    await callback.message.delete()
+    await callback.message.answer(text=text)
+    await state.set_state(EditStatus.photo)
+
+
+@admin_router.message(EditStatus.photo)
+async def edit_photo(message: Message, state: FSMContext) -> None:
+    if not message.photo:
+        await message.answer(text="Invalid photo. Please enter a valid photo.")
+        return
+    try:
+        photo_id = message.photo[-1].file_id
+        await state.update_data(photo_id=photo_id)
+    except TypeError:
+        await message.answer(text="Invalid photo. Please enter a valid photo.")
+        return
+    await message.answer(text=f"photo set to: {photo_id}",reply_markup=akb.edit_finally_kb)
+    logger.debug(f"{photo_id=}, {state}")
+
+
+@admin_router.callback_query(F.data == "edit:skip")
+async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    states = [EditStatus.price,EditStatus.tags, EditStatus.description, EditStatus.photo]
+    current_state = await state.get_state()
+    if current_state in states:
+        next_state_index = states.index(current_state) + 1
+        if next_state_index < len(states):
+            next_state = states[next_state_index]
+            await state.set_state(next_state)
+            text = f"Please enter the {next_state.name} of the product."
+            await callback.message.delete()
+            await callback.message.answer(text=text)
+        else:
+            text = "You have completed all the steps. Please finish the editing process."
+            await callback.message.delete()
+            await callback.message.answer(text=text, reply_markup=akb.edit_finally_kb)
+
+
+@admin_router.callback_query(F.data == "edit:finish")
+async def edit_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -> None:
+    await callback.answer()
+    data = await state.get_data()
+    logger.debug(f"{data=}")
+    name = str(data.get("name", "product"))
+    price = (data.get("price", None))
+    tags = str(data.get("tags", None))
+    description = str(data.get("description", None))
+    photo_id = str(data.get("photo_id", None))
+    try:
+        await adb.edit_product(pool,name,price,tags,description,photo_id)
+    except ValueError as e:
+        logger.warning(f"not correctly response,{e}",exc_info=True)
+    text = "Success edit the product!"
+    await callback.message.delete()
+    await callback.answer(text=text)
+
+
+
+@admin_router.callback_query(F.data == "delete:product")
+async def delete_product(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    text = "Please enter the name of the product you want to delete."
+    await callback.message.delete()
+    await callback.message.answer(text=text)
+    await state.set_state(DeleteProduct.name)
+
+
+@admin_router.message(DeleteProduct.name)
+async def delete_product_name(message: Message, state: FSMContext, pool: Pool) -> None:
+    name = message.text
+    if not name:
+        await message.answer(text="Invalid product name. Please enter a valid name.")
+        await state.clear_state()
+        await message.answer(text="Operation cancelled.", reply_markup=akb.tables)
+        return
+    try:
+        await adb.delete_product(pool,name)
+    except ValueError as e:
+        logger.warning(f"not correctly response,{e}",exc_info=True)
+    text = f"Product '{name}' has been deleted from the catalog."
+    await message.answer(text=text, reply_markup=akb.tables)

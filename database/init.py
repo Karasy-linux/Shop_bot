@@ -1,8 +1,7 @@
-import asyncio
 import asyncpg
 from asyncpg import Pool, PostgresError
+from config import ADMIN_ID, DB_HOST, DB_NAME, DB_PASS, DB_USER, QUERIES
 from loguru import logger
-from config import QUERIES, DB_HOST, DB_NAME, DB_PASS, DB_USER, ADMIN_ID
 
 
 async def init_pool() -> Pool | None:
@@ -36,5 +35,5 @@ async def init_db(pool: Pool) -> None:
 
 async def close_db(pool: Pool) -> None:
     if pool:
-        await pool.close() 
+        await pool.close()
 

@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS products(
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
+    name VARCHAR(50) UNIQUE,
     price REAL NOT NULL,
     photo_id TEXT,
     description VARCHAR(255),
