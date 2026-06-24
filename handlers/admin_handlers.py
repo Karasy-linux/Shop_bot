@@ -185,11 +185,13 @@ async def skip_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -
     photo_id = data.get("photo_id", None)
     try:
         await adb.add_product(pool,name,price,tags,description,photo_id)
+        await state.clear()
     except ValueError as e:
         logger.warning(f"not correctly response,{e}",exc_info=True)
     text = "Success sets to store the product!"
     await callback.message.delete()
     await callback.answer(text=text)
+    await state.clear()
 
 
 @admin_router.callback_query(F.data == "edit:product")
@@ -327,6 +329,7 @@ async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
             await callback.message.answer(text=text, reply_markup=akb.edit_finally_kb)
 
 
+
 @admin_router.callback_query(F.data == "edit:finish")
 async def edit_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -> None:
     await callback.answer()
@@ -339,11 +342,13 @@ async def edit_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -
     photo_id = str(data.get("photo_id", None))
     try:
         await adb.edit_product(pool,name,price,tags,description,photo_id)
+        await state.clear()
     except ValueError as e:
         logger.warning(f"not correctly response,{e}",exc_info=True)
     text = "Success edit the product!"
     await callback.message.delete()
     await callback.answer(text=text)
+    await state.clear()
 
 
 
@@ -358,7 +363,7 @@ async def delete_product(callback: CallbackQuery, state: FSMContext, pool: Pool)
 
 
 @admin_router.message(DeleteProduct.name)
-async def delete_product_name(message: Message, pool: Pool) -> None:
+async def delete_product_name(message: Message, pool: Pool, state: FSMContext) -> None:
     name = message.text
     if not service.check_product_name(pool,name):
         await message.answer(text="Product not found. Please enter a valid product name.")
@@ -366,6 +371,8 @@ async def delete_product_name(message: Message, pool: Pool) -> None:
         return
     try:
         await adb.delete_product(pool,name)
+        await state.clear()
     except ValueError as e:
+        await state.clear()
         logger.warning(f"not correctly response,{e}",exc_info=True)
     
