@@ -1,5 +1,5 @@
-import database.service as service
-import keyboards.user_kb as ukb
+from database import service 
+from keyboards import user_kb as ukb
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message

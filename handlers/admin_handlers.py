@@ -1,6 +1,6 @@
-import database.admin_queries as adb
-import database.service as service
-import keyboards.admin_kb as akb
+from database import admin_queries as adb
+from database import service as service
+from keyboards import admin_kb as akb
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -192,19 +192,28 @@ async def skip_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -
     await callback.answer(text=text)
 
 
-
 @admin_router.callback_query(F.data == "edit:product")
-async def edit_product(callback: CallbackQuery, state: FSMContext) -> None:
+async def edit_product(callback: CallbackQuery, state: FSMContext, pool: Pool) -> None:
+    await callback.answer()
+    products = await service.get_product_names(pool)
+    text = (f"Let's edit a product in the catalog! Please choose the parameter you want to edit first."
+            f"\nAvailable products: {', '.join(products)}")
+    await callback.message.delete()
+    await callback.message.answer(text=text, reply_markup=akb.edit_product_kb)
+   
+
+@admin_router.callback_query(F.data == "edit:set:product")
+async def edit_set_name_product(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     text = "Let's edit a product in the catalog! Please choose the parameter you want to edit first."
     await callback.message.delete()
-    await callback.message.answer(text=text, reply_markup=akb.edit_product_kb)
+    await callback.message.answer(text=text)
     await state.set_state(EditStatus.name)
 
 
 @admin_router.message(EditStatus.name)
-async def set_product_name(message: Message, state: FSMContext) -> None:
-    if not message.text:
+async def set_product_name(message: Message, state: FSMContext,pool: Pool) -> None:
+    if not await service.check_product_name(pool,message.text):
         await message.answer(text="Invalid product name. Please enter a valid name.")
         await state.clear()
         await message.answer(text="Operation cancelled.", reply_markup=akb.edit_product_kb)
@@ -302,16 +311,16 @@ async def edit_photo(message: Message, state: FSMContext) -> None:
 @admin_router.callback_query(F.data == "edit:skip")
 async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
-    states = [EditStatus.price,EditStatus.tags, EditStatus.description, EditStatus.photo]
+    states = [EditStatus.name, EditStatus.price, EditStatus.tags, EditStatus.description, EditStatus.photo]
+    state_kb = [akb.edit_product_kb,akb.edit_price_kb, akb.edit_tags_kb, akb.edit_description_kb, akb.edit_photo_kb]
     current_state = await state.get_state()
     if current_state in states:
-        next_state_index = states.index(current_state) + 1
+        next_state_index = states.index(current_state) + 2
         if next_state_index < len(states):
-            next_state = states[next_state_index]
-            await state.set_state(next_state)
-            text = f"Please enter the {next_state.name} of the product."
+            next_state_kb = state_kb[next_state_index]
+            text = f"Please send the {states[next_state_index].state[11:]} of the product."
             await callback.message.delete()
-            await callback.message.answer(text=text)
+            await callback.message.answer(text=text, reply_markup=next_state_kb)
         else:
             text = "You have completed all the steps. Please finish the editing process."
             await callback.message.delete()
@@ -339,25 +348,24 @@ async def edit_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -
 
 
 @admin_router.callback_query(F.data == "delete:product")
-async def delete_product(callback: CallbackQuery, state: FSMContext) -> None:
+async def delete_product(callback: CallbackQuery, state: FSMContext, pool: Pool) -> None:
     await callback.answer()
-    text = "Please enter the name of the product you want to delete."
+    products = await service.get_product_names(pool)
+    text = f"Please enter the name of the product you want to delete.\nAvailable products: {', '.join(products)}"
     await callback.message.delete()
     await callback.message.answer(text=text)
     await state.set_state(DeleteProduct.name)
 
 
 @admin_router.message(DeleteProduct.name)
-async def delete_product_name(message: Message, state: FSMContext, pool: Pool) -> None:
+async def delete_product_name(message: Message, pool: Pool) -> None:
     name = message.text
-    if not name:
-        await message.answer(text="Invalid product name. Please enter a valid name.")
-        await state.clear_state()
-        await message.answer(text="Operation cancelled.", reply_markup=akb.tables)
+    if not service.check_product_name(pool,name):
+        await message.answer(text="Product not found. Please enter a valid product name.")
+        await message.answer(text="Operation cancelled.")
         return
     try:
         await adb.delete_product(pool,name)
     except ValueError as e:
         logger.warning(f"not correctly response,{e}",exc_info=True)
-    text = f"Product '{name}' has been deleted from the catalog."
-    await message.answer(text=text, reply_markup=akb.tables)
+    

@@ -53,11 +53,14 @@ async def edit_product(pool: Pool, name:str ,price=None | float, tags=None | str
         logger.error(f"invalid {name=} {e}",exc_info=True)
 
 
-async def delete_product(pool: Pool, name:str) -> None:
+async def delete_product(pool: Pool, name:str | None) -> None:
+    if not name:
+        logger.warning("there is no name")
+        return
     try:
         async with pool.acquire() as con: #type: ignore
             query = """
-                    DELETE FROM products WHERE name = $1 ON CONFLICT (name) DO NOTHING;
+                    DELETE FROM products WHERE name = $1;
                     """
             await con.execute(query,name)
             logger.info(f"success delete product {name=}")

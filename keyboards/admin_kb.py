@@ -40,7 +40,7 @@ add_description_kb = add_description.as_markup()
 add_photo = InlineKeyboardBuilder()
 add_photo.add(InlineKeyboardButton(text="set photo",callback_data="set:photo"))
 add_photo.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
-add_photo.add(InlineKeyboardButton(text="skip",callback_data="set:finish"))
+add_photo.add(InlineKeyboardButton(text="skip and finish",callback_data="set:finish"))
 add_photo_kb = add_photo.as_markup()
 
 
@@ -56,7 +56,7 @@ add_finally_kb = add_finally.as_markup()
 
 
 edit_product = InlineKeyboardBuilder()
-edit_product.add(InlineKeyboardButton(text="write name",callback_data="edit:product"))
+edit_product.add(InlineKeyboardButton(text="write name",callback_data="edit:set:product"))
 edit_product.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
 edit_product_kb = edit_product.as_markup()
 
@@ -81,7 +81,7 @@ edit_description_kb = edit_description.as_markup()
 edit_photo = InlineKeyboardBuilder()
 edit_photo.add(InlineKeyboardButton(text="write photo",callback_data="edit:photo"))
 edit_photo.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
-edit_photo.add(InlineKeyboardButton(text="skip",callback_data="edit:skip"))
+edit_photo.add(InlineKeyboardButton(text="skip and finish",callback_data="edit:finish"))
 edit_photo_kb = edit_photo.as_markup()
 
 edit_finally = InlineKeyboardBuilder()

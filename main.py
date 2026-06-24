@@ -1,6 +1,6 @@
 import asyncio
 
-import database.init as db
+from database import init
 from aiogram import Dispatcher
 from config import bot
 from handlers import admin_router, user_router
@@ -19,14 +19,14 @@ logger.add(
 
 async def main():
     try:
-        pool = await db.init_pool()
-        await db.init_db(pool)
+        pool = await init.init_pool()
+        await init.init_db(pool)
         dp = Dispatcher()
         dp.include_router(user_router)
         dp.include_router(admin_router)
         await dp.start_polling(bot,pool=pool) #type: ignore
     finally:
-        await db.close_db(pool)
+        await init.close_db(pool)
         logger.info("the database is locked")
 
 

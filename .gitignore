@@ -7,6 +7,7 @@ __pycache__/
 *$py.class
 
 .vscode/
+.ruff_cache/
 
 .DS_Store
 Thumbs.db
