@@ -78,7 +78,9 @@ async def get_product(pool: Pool, name:str) -> dict | None:
     try:
         async with pool.acquire() as con:
             query = """
-                    SELECT price, description, tags, photo_id FROM products WHERE name = $1
+                    SELECT name,price, description, tags, photo_id 
+                    FROM products WHERE name = $1
+                    ORDER BY price DESC
                     LIMIT 4;
                     """
             res = await con.fetchrow(query,name)

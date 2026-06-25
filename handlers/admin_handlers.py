@@ -311,24 +311,48 @@ async def edit_photo(message: Message, state: FSMContext) -> None:
     logger.debug(f"{photo_id=}, {state}")
 
 
+
 @admin_router.callback_query(F.data == "edit:skip")
 async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
-    states = [EditStatus.name, EditStatus.price, EditStatus.tags, EditStatus.description, EditStatus.photo]
-    state_kb = [akb.edit_product_kb,akb.edit_price_kb, akb.edit_tags_kb, akb.edit_description_kb, akb.edit_photo_kb]
+    states = [
+        EditStatus.name, 
+        EditStatus.price, 
+        EditStatus.tags, 
+        EditStatus.description, 
+        EditStatus.photo
+    ]
+    state_kb = [
+        akb.edit_price_kb,       
+        akb.edit_tags_kb,        
+        akb.edit_description_kb, 
+        akb.edit_photo_kb,      
+        akb.edit_finally_kb     
+    ]
+    
     current_state = await state.get_state()
+    
     if current_state in states:
-        next_state_index = states.index(current_state) + 2
-        if next_state_index < len(states):
-            next_state_kb = state_kb[next_state_index]
-            text = f"Please send the {states[next_state_index].state[11:]} of the product."
-            await callback.message.delete()
-            await callback.message.answer(text=text, reply_markup=next_state_kb)
+        current_index = states.index(current_state)
+        next_index = current_index + 1  # Крок строго на +1 вперед
+        
+        await callback.message.delete()
+        
+        if next_index < len(states):
+            # Перемикаємо стан FSM на наступний — ОЦЕ ТИ ПРОПУСТИВ!
+            await state.set_state(states[next_index])
+            
+            # Беремо відповідну клавіатуру
+            next_kb = state_kb[current_index] 
+            field_name = states[next_index].state.split(":")[-1] # Чистий зріз стану
+            
+            text = f"Please send the {field_name} of the product."
+            await callback.message.answer(text=text, reply_markup=next_kb)
         else:
+            # Якщо це був останній стан (photo), завершуємо процес
+            # Стан можна скинути або перевести у фінальний
             text = "You have completed all the steps. Please finish the editing process."
-            await callback.message.delete()
             await callback.message.answer(text=text, reply_markup=akb.edit_finally_kb)
-
 
 
 @admin_router.callback_query(F.data == "edit:finish")

@@ -21,7 +21,7 @@ if not TOKEN and not DB_PASS and not ADMIN_ID:
     os._exit(1)
 
 bot = Bot(TOKEN) # type: ignore
-DEFUALT_IMG = 'AgACAgIAAxkBAAICiWo5AAGSEXQ3CpuTvhay48tC2OV80AAC0RtrG2obyElpIYAFu8ylFwEAAwIAA3gAAzwE'
+DEFUALT_IMG ='AgACAgIAAxkBAAIDe2o8-Q4v2IAyZDT16Sed2PDHQrlvAAJjFmsbWNzpSZRCO5lejr5pAQADAgADeAADPAQ'
 
 # db
 DB_PATH = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:5432/{DB_NAME}"
