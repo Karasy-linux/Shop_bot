@@ -73,11 +73,12 @@ async def name_fsm(callback: CallbackQuery, state: FSMContext) -> None:
 @admin_router.message(SetStates.name)
 async def set_name(message: Message, state: FSMContext) -> None:
     name = message.text
-    if not name:
-        await message.answer(text="Invalid product name. Please enter a valid name.")
+    if not name or len(name) > 50:
+        await message.answer(text="Invalid product name. Please enter a valid name. Name must be between 1 and 50 characters.")
         await state.clear()
         await message.answer(text="Operation cancelled.", reply_markup=akb.add_name_kb)
         return
+    
     await state.update_data(name=name)
     await message.answer(text=f"Name set to: {name}")
     await message.answer(text="Please enter the price of the product.", reply_markup=akb.add_price_kb)

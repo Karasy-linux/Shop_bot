@@ -2,18 +2,6 @@ from asyncpg import Pool, PostgresError
 from loguru import logger
 from config import DEFUALT_IMG 
 
-async def add_user(pool: Pool, chat_id:int, username:str) -> None:
-    try:
-        async with pool.acquire() as con:
-            query = """
-                    INSERT INTO users(chat_id,username) VALUES($1,$2)
-                    ON CONFLICT (chat_id) DO NOTHING;
-                    """
-            await con.execute(query, chat_id, username)
-            logger.debug(f"{chat_id=},{username=}")
-    except PostgresError as e:
-        logger.error(f"invalid values{e}")
-
 
 async def is_admin(pool: Pool, chat_id:int) -> bool:
     if not chat_id:
@@ -30,6 +18,19 @@ async def is_admin(pool: Pool, chat_id:int) -> bool:
     except PostgresError as e:
         logger.error(f"invalid value {chat_id=} {e}")
         return False
+    
+
+async def add_user(pool: Pool, chat_id:int, username:str) -> None:
+    try:
+        async with pool.acquire() as con:
+            query = """
+                    INSERT INTO users(chat_id,username) VALUES($1,$2)
+                    ON CONFLICT (chat_id) DO NOTHING;
+                    """
+            await con.execute(query, chat_id, username)
+            logger.debug(f"{chat_id=},{username=}")
+    except PostgresError as e:
+        logger.error(f"invalid values{e}")
 
 
 async def check_product_name(pool: Pool, name:str | None) -> bool:
@@ -64,22 +65,31 @@ async def get_product_names(pool: Pool) -> list[str]:
 
 
 async def get_product(pool: Pool, name:str) -> dict | None:
+    """
+    The returned dictionary has the following structure:
+    f"📦 <b>{product['name']}</b>\n\n"
+            f"{product['description']}\n\n"
+            f"💰 <b>price:</b> ${product['price']} \n"
+            f"{product['tags']}"
+    """
     if not name:
         logger.warning("there is no name")
         return None
     try:
         async with pool.acquire() as con:
             query = """
-                    SELECT price, description, tags, photo_id FROM products WHERE name = $1;
+                    SELECT price, description, tags, photo_id FROM products WHERE name = $1
+                    LIMIT 4;
                     """
             res = await con.fetchrow(query,name)
+            product = {}
+            for key in res.keys():
+                product[key] = res[key]
             price = res["price"] 
             tags = res["tags"]
-            if description := res["description"] is None:
-                description = "no description"
-            if photo_id := res["photo_id"] is None:
-                photo_id = DEFUALT_IMG
-            text = {
+            description = res.get("description", "no description")
+            photo_id = res.get("photo_id", DEFUALT_IMG)
+            product = {
                 "name": name,
                 "price": price,
                 "description": description,
@@ -87,7 +97,7 @@ async def get_product(pool: Pool, name:str) -> dict | None:
                 "photo_id": photo_id
             }
             logger.debug(f"{name=} {res=}")
-            return dict(text) if res is not None else None
+            return product if res is not None else None
     except PostgresError as e:
         logger.error(f"invalid value {name=} {e}")
         return None

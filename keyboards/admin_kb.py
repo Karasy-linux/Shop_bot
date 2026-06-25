@@ -79,7 +79,7 @@ edit_description.add(InlineKeyboardButton(text="skip",callback_data="edit:skip")
 edit_description_kb = edit_description.as_markup()
 
 edit_photo = InlineKeyboardBuilder()
-edit_photo.add(InlineKeyboardButton(text="write photo",callback_data="edit:photo"))
+edit_photo.add(InlineKeyboardButton(text="send photo",callback_data="edit:photo"))
 edit_photo.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
 edit_photo.add(InlineKeyboardButton(text="skip and finish",callback_data="edit:finish"))
 edit_photo_kb = edit_photo.as_markup()

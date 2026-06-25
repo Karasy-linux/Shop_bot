@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS users(
 
 CREATE TABLE IF NOT EXISTS carts(
     chat_id BIGINT REFERENCES users(chat_id),
-    product_id INTEGER REFERENCES products(id),
-    PRIMARY KEY(chat_id, product_id)
+    name VARCHAR(50) REFERENCES products(name),
+    PRIMARY KEY(chat_id, name)
 );
+
+CREATE INDEX IF NOT EXISTS index_tags ON products (tags);

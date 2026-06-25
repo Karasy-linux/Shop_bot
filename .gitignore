@@ -5,6 +5,7 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
+.python-version
 
 .vscode/
 .ruff_cache/
