@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users(
 
 CREATE TABLE IF NOT EXISTS carts(
     chat_id BIGINT REFERENCES users(chat_id),
-    name VARCHAR(50) UNIQUE REFERENCES products(name),
+    name VARCHAR(50) REFERENCES products(name),
     PRIMARY KEY(chat_id, name)
 );
 

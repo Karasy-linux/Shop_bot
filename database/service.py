@@ -1,7 +1,7 @@
 from asyncpg import Pool, PostgresError
 from loguru import logger
 from config import DEFUALT_IMG 
-
+from database import service
 
 async def is_admin(pool: Pool, chat_id:int) -> bool:
     if not chat_id:
@@ -103,3 +103,16 @@ async def get_product(pool: Pool, name:str) -> dict | None:
     except PostgresError as e:
         logger.error(f"invalid value {name=} {e}")
         return None
+    
+
+async def add_cart(pool:Pool,chat_id:int, name:str) -> None:
+    if not name:
+        logger.warning("there is no name")
+        return
+    try:
+        async with pool.acquire() as con:
+            query = "INSERT INTO carts(chat_id,name) VALUES($1,$2)"
+            await con.execute(query,chat_id,name)
+            logger.info(f"add to cart:{chat_id=},{name=}")
+    except PostgresError as e:
+        logger.error(f"{e}",exc_info=True)  

@@ -334,23 +334,20 @@ async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
     
     if current_state in states:
         current_index = states.index(current_state)
-        next_index = current_index + 1  # Крок строго на +1 вперед
+        next_index = current_index + 1  
         
         await callback.message.delete()
         
         if next_index < len(states):
-            # Перемикаємо стан FSM на наступний — ОЦЕ ТИ ПРОПУСТИВ!
             await state.set_state(states[next_index])
             
-            # Беремо відповідну клавіатуру
             next_kb = state_kb[current_index] 
-            field_name = states[next_index].state.split(":")[-1] # Чистий зріз стану
+            field_name = states[next_index].state.split(":")[-1] 
             
             text = f"Please send the {field_name} of the product."
             await callback.message.answer(text=text, reply_markup=next_kb)
         else:
-            # Якщо це був останній стан (photo), завершуємо процес
-            # Стан можна скинути або перевести у фінальний
+            await state.clear()
             text = "You have completed all the steps. Please finish the editing process."
             await callback.message.answer(text=text, reply_markup=akb.edit_finally_kb)
 
@@ -359,17 +356,23 @@ async def edit_skip(callback: CallbackQuery, state: FSMContext) -> None:
 async def edit_finally(callback: CallbackQuery, state: FSMContext, pool: Pool) -> None:
     await callback.answer()
     data = await state.get_data()
+
     logger.debug(f"{data=}")
+
     name = str(data.get("name", "product"))
     price = (data.get("price", None))
     tags = str(data.get("tags", None))
     description = str(data.get("description", None))
     photo_id = str(data.get("photo_id", None))
+
     try:
         await adb.edit_product(pool,name,price,tags,description,photo_id)
         await state.clear()
     except ValueError as e:
         logger.warning(f"not correctly response,{e}",exc_info=True)
+        await callback.answer(text="Failed to edit the product. Please try again.")
+        await state.clear()
+        return
     text = "Success edit the product!"
     await callback.message.delete()
     await callback.answer(text=text)
