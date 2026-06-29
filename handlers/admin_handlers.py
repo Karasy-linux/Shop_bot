@@ -147,7 +147,9 @@ async def set_description(message: Message, state: FSMContext) -> None:
 async def skip(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     text = "Please send the photo of the product."
+    await callback.message.delete()
     await callback.answer(text=text, reply_markup=akb.add_photo_kb)
+    await state.set_state(SetStates.photo)
 
 
 @admin_router.callback_query(F.data == "set:photo")

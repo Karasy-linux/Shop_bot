@@ -19,6 +19,7 @@ def add_product_kb(product_name: str):
     return builder.as_markup()
 
 def del_product_kb(product_name: str):
+
     builder = InlineKeyboardBuilder()
     
     builder.button(
@@ -27,9 +28,13 @@ def del_product_kb(product_name: str):
     )
     return builder.as_markup()
 
+buy = InlineKeyboardBuilder()
+buy.add(InlineKeyboardButton(text="buy",callback_data="buy"))
+buy_kb = buy.as_markup()
 
 reply_builder = ReplyKeyboardBuilder()
 reply_builder.add(KeyboardButton(text="/catalog"))
+reply_builder.add(KeyboardButton(text="/my_cart"))
 catalog = reply_builder.as_markup(resize_keyboard=True)
 
 

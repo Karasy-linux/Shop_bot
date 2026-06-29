@@ -34,7 +34,7 @@ add_tags_kb = add_tags.as_markup()
 add_description = InlineKeyboardBuilder()
 add_description.add(InlineKeyboardButton(text="set description",callback_data="set:description"))
 add_description.add(InlineKeyboardButton(text="cancel",callback_data="cancel"))
-add_description.add(InlineKeyboardButton(text="skip",callback_data="set:skip"))
+#add_description.add(InlineKeyboardButton(text="skip",callback_data="set:skip"))
 add_description_kb = add_description.as_markup()
 
 add_photo = InlineKeyboardBuilder()

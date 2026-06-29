@@ -1,7 +1,7 @@
 from asyncpg import Pool, PostgresError
 from loguru import logger
 from config import DEFUALT_IMG 
-from database import service
+
 
 async def is_admin(pool: Pool, chat_id:int) -> bool:
     if not chat_id:
@@ -16,7 +16,7 @@ async def is_admin(pool: Pool, chat_id:int) -> bool:
             logger.debug(f"{chat_id=} {res=}")
             return bool(res) if res is not None else False
     except PostgresError as e:
-        logger.error(f"invalid value {chat_id=} {e}")
+        logger.error(f"invalid value {chat_id=} {e}",exc_info=True)
         return False
     
 
@@ -30,7 +30,21 @@ async def add_user(pool: Pool, chat_id:int, username:str) -> None:
             await con.execute(query, chat_id, username)
             logger.debug(f"{chat_id=},{username=}")
     except PostgresError as e:
-        logger.error(f"invalid values{e}")
+        logger.error(f"invalid values{e}",exc_info=True)
+
+
+async def show_balance(pool: Pool, chat_id:int) -> float | None:
+    if not chat_id:
+        logger.warning("there is no name")
+        return 
+    query = "SELECT balance FROM users WHERE chat_id = $1"
+    try:
+        async with pool.acquire() as con:
+            balance = await con.fetchval(query,chat_id)
+            logger.debug(f"{chat_id=}\nbalance ${balance}")
+            return balance
+    except PostgresError as e:
+        logger.warning(f"{e}",exc_info=True)
 
 
 async def check_product_name(pool: Pool, name:str | None) -> bool:
@@ -46,7 +60,7 @@ async def check_product_name(pool: Pool, name:str | None) -> bool:
             logger.debug(f"{name=} {res=}")
             return bool(res) if res is not None else False
     except PostgresError as e:
-        logger.error(f"invalid value {name=} {e}")
+        logger.error(f"invalid value {name=} {e}",exc_info=True)
         return False
 
 
@@ -101,7 +115,7 @@ async def get_product(pool: Pool, name:str) -> dict | None:
             logger.debug(f"{name=} {res=}")
             return product if res is not None else None
     except PostgresError as e:
-        logger.error(f"invalid value {name=} {e}")
+        logger.error(f"invalid value {name=} {e}",exc_info=True)
         return None
     
 
@@ -116,3 +130,52 @@ async def add_cart(pool:Pool,chat_id:int, name:str) -> None:
             logger.info(f"add to cart:{chat_id=},{name=}")
     except PostgresError as e:
         logger.error(f"{e}",exc_info=True)  
+
+
+async def check_user_cart(pool:Pool, chat_id:int, name:str) -> bool:
+    if not name or not chat_id:
+        return False
+    query = """
+            SELECT EXISTS(SELECT 1 FROM carts
+            WHERE chat_id = $1 AND name = $2);
+            """
+    try:
+        async with pool.acquire() as con:
+            res = await con.fetchval(query,chat_id,name)
+    except PostgresError as e:
+        logger.warning(f"{e}",exc_info=True)
+        return False
+    logger.debug(f"{res=}")
+    return bool(res) 
+        
+
+async def show_name_cart(pool: Pool, chat_id: int) -> list | None:
+    if not chat_id:
+        logger.warning("not have chat_id")
+        return 
+    query = """
+            SELECT name FROM carts WHERE chat_id = $1;
+            """
+    try:
+        async with pool.acquire() as con:
+            res = await con.fetch(query,chat_id)
+            logger.debug(f"{res=}")
+            return res
+    except PostgresError as e:
+        logger.warning(f"don't get a products" 
+                       f"from cart for {chat_id=}\n{e}",exc_info=True)
+        return 
+
+
+async def del_product_cart(pool: Pool, chat_id:int, name:str) -> bool:
+    query = """
+            DELETE FROM carts WHERE chat_id = $1 AND name = $2
+            """
+    try:
+        async with pool.acquire() as con:
+            await con.execute(query,chat_id,name)
+            logger.info(f"{chat_id=} deleted to the {name}")
+            return True
+    except PostgresError as e:
+        logger.warning(f"{e}",exc_info=True)
+        return False
