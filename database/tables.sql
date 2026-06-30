@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS users(
     username TEXT,
     is_admin BOOLEAN DEFAULT FALSE,
     balance REAL DEFUALT 0.0,
-    PRIMARY KEY (chat_id)
+    PRIMARY KEY (chat_id),
+    inventory TEXT
 );
 
 --carts

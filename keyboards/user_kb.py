@@ -28,13 +28,12 @@ def del_product_kb(product_name: str):
     )
     return builder.as_markup()
 
-buy = InlineKeyboardBuilder()
-buy.add(InlineKeyboardButton(text="buy",callback_data="buy"))
-buy_kb = buy.as_markup()
-
 reply_builder = ReplyKeyboardBuilder()
 reply_builder.add(KeyboardButton(text="/catalog"))
 reply_builder.add(KeyboardButton(text="/my_cart"))
+reply_builder.add(KeyboardButton(text="/search_by_tag"))
+reply_builder.add(KeyboardButton(text="/top_up"))
+reply_builder.add(KeyboardButton(text="/help"))
 catalog = reply_builder.as_markup(resize_keyboard=True)
 
 
@@ -45,3 +44,23 @@ tables = inline_builder.as_markup()
 product = InlineKeyboardBuilder()
 product.add(InlineKeyboardButton(text="add to cart",callback_data="add:cart"))
 product_kb = product.as_markup()
+
+
+buy_answer = InlineKeyboardBuilder()
+buy_answer.add(InlineKeyboardButton(text="buy",callback_data="buy:answer"))
+buy_kb = buy_answer.as_markup()
+
+yes_or_no_buy = InlineKeyboardBuilder()
+yes_or_no_buy.add(InlineKeyboardButton(text="YES",callback_data="yes:buy"))
+yes_or_no_buy.add(InlineKeyboardButton(text="NO",callback_data="no:buy"))
+yes_or_no_buy_kb = yes_or_no_buy.as_markup()
+
+
+top_up_answer = InlineKeyboardBuilder()
+top_up_answer.add(InlineKeyboardButton(text="top up",callback_data="topup:answer"))
+top_up_answer_kb = top_up_answer.as_markup()
+
+yes_or_no_top_up = InlineKeyboardBuilder()
+yes_or_no_top_up.add(InlineKeyboardButton(text="YES",callback_data="yes:topup"))
+yes_or_no_top_up.add(InlineKeyboardButton(text="NO",callback_data="no:topup"))
+yes_or_no_top_up_kb = yes_or_no_top_up.as_markup()

@@ -17,7 +17,7 @@ async def init_pool() -> Pool | None:
 
 async def init_db(pool: Pool) -> None:
     try:
-        async with pool.acquire() as con: #type: ignore
+        async with pool.acquire() as con: 
             async with con.transaction():
                 query = QUERIES["tables"]
                 logger.debug("success create query")
