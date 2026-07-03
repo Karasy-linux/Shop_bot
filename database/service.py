@@ -1,26 +1,31 @@
-from asyncpg import Pool, PostgresError, DataError
+from asyncpg import Pool, PostgresError, DataError, InterfaceError, UndefinedFunctionError
 from loguru import logger
-from config import DEFUALT_IMG 
+from config import DEFUALT_IMG
 
 
-async def is_admin(pool:Pool, chat_id:int) -> bool:
+# ============================================================
+# USER & ADMIN
+# ============================================================
+
+
+async def is_admin(pool: Pool, chat_id: int) -> bool:
     if not chat_id:
-        logger.warning("there is no chat_id")
+        logger.warning("⚠️ there is no chat_id")
         return False
     try:
         async with pool.acquire() as con:
             query = """
                     SELECT is_admin FROM users WHERE chat_id = $1;
                     """
-            res = await con.fetchval(query,chat_id)
+            res = await con.fetchval(query, chat_id)
             logger.debug(f"{chat_id=} {res=}")
             return bool(res) if res is not None else False
     except PostgresError as e:
-        logger.error(f"invalid value {chat_id=} {e}",exc_info=True)
+        logger.error(f"❌ invalid value {chat_id=} {e}", exc_info=True)
         return False
-    
 
-async def add_user(pool:Pool, chat_id:int, username:str) -> None:
+
+async def add_user(pool: Pool, chat_id: int, username: str) -> None:
     try:
         async with pool.acquire() as con:
             query = """
@@ -28,26 +33,41 @@ async def add_user(pool:Pool, chat_id:int, username:str) -> None:
                     ON CONFLICT (chat_id) DO NOTHING;
                     """
             await con.execute(query, chat_id, username)
-            logger.debug(f"{chat_id=},{username=}")
+            logger.debug(f"👤 {chat_id=}, {username=}")
     except PostgresError as e:
-        logger.error(f"invalid values{e}",exc_info=True)
+        logger.error(f"❌ invalid values {e}", exc_info=True)
 
 
-async def check_product_name(pool:Pool, name:str | None) -> bool:
+async def check_product_name(pool: Pool, name: str | None) -> bool:
     if not name:
-        logger.warning("there is no name")
+        logger.warning("⚠️ there is no name")
         return False
     try:
         async with pool.acquire() as con:
             query = """
                     SELECT EXISTS(SELECT 1 FROM products WHERE name = $1);
                     """
-            res = await con.fetchval(query,name)
+            res = await con.fetchval(query, name)
             logger.debug(f"{name=} {res=}")
             return bool(res) if res is not None else False
     except PostgresError as e:
-        logger.error(f"invalid value {name=} {e}",exc_info=True)
+        logger.error(f"❌ invalid value {name=} {e}", exc_info=True)
         return False
+
+
+async def my_profile(pool: Pool, chat_id: int) -> dict | None:
+    query = """
+            SELECT username, is_admin, balance, inventory FROM users
+            WHERE chat_id = $1;
+            """
+    try:
+        async with pool.acquire() as con:
+            row = await con.fetchrow(query, chat_id)
+            logger.debug(f"{row=}")
+            return row
+    except PostgresError as e:
+        logger.error(f"❌ {e}", exc_info=True)
+        return
 
 
 async def get_product_names(pool: Pool) -> list[str]:
@@ -60,34 +80,34 @@ async def get_product_names(pool: Pool) -> list[str]:
             logger.debug(f" {res=}")
             return [row["name"] for row in res]
     except PostgresError as e:
-        logger.error(f"Database error {e}",exc_info=True)
+        logger.error(f"❌ Database error {e}", exc_info=True)
         return []
 
 
-async def get_product(pool:Pool, name:str) -> dict | None:
+async def get_product(pool: Pool, name: str) -> dict | None:
     """
     The returned dictionary has the following structure:
-    f"📦 <b>{product['name']}</b>\n\n"
+    f"\U0001f4e6 <b>{product['name']}</b>\n\n"
             f"{product['description']}\n\n"
-            f"💰 <b>price:</b> ${product['price']} \n"
+            f"\U0001f4b0 <b>price:</b> ${product['price']} \n"
             f"{product['tags']}"
     """
     if not name:
-        logger.warning("there is no name")
+        logger.warning("⚠️ there is no name")
         return None
     try:
         async with pool.acquire() as con:
             query = """
-                    SELECT name,price, description, tags, photo_id 
+                    SELECT name, price, description, tags, photo_id
                     FROM products WHERE name = $1
                     ORDER BY price DESC
                     LIMIT 4;
                     """
-            res = await con.fetchrow(query,name)
+            res = await con.fetchrow(query, name)
             product = {}
             for key in res.keys():
                 product[key] = res[key]
-            price = res["price"] 
+            price = int(res["price"])
             tags = res["tags"]
             description = res.get("description", "no description")
             photo_id = res.get("photo_id", DEFUALT_IMG)
@@ -96,45 +116,90 @@ async def get_product(pool:Pool, name:str) -> dict | None:
                 "price": price,
                 "description": description,
                 "tags": tags,
-                "photo_id": photo_id
+                "photo_id": photo_id,
             }
             logger.debug(f"{name=} {res=}")
             return product if res is not None else None
-    except PostgresError as e:
-        logger.error(f"invalid value {name=} {e}",exc_info=True)
+    except (PostgresError, DataError) as e:
+        logger.error(f"❌ invalid value {name=} {e}", exc_info=True)
         return None
-    
 
-async def show_total_price(pool:Pool,chat_id:int) -> float | None:
+
+async def search_by_tags(pool: Pool, tags: str) -> list[str] | None:
     query = """
-            SELECT COALESCE(SUM(p.price), 0) 
+            SELECT name
+            FROM products
+            WHERE tags ILIKE $1;
+            """
+    try:
+        async with pool.acquire() as con:
+            names = await con.fetch(query, tags)
+            logger.debug(f"{names=}, {tags=}")
+            return [row["name"] for row in names]
+
+    except DataError as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
+
+    except PostgresError as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
+
+    return None
+
+
+async def show_inventory(pool: Pool, chat_id: int) -> str | None:
+    query = """
+            SELECT inventory FROM users WHERE chat_id = $1;
+            """
+    try:
+        async with pool.acquire() as con:
+            inventory = await con.fetchval(query, chat_id)
+            logger.debug(f"{inventory=}")
+            return inventory
+    except DataError as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
+    except PostgresError as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
+    return None
+
+
+# ============================================================
+#                    CART
+# ============================================================
+
+
+async def show_total_price(pool: Pool, chat_id: int) -> int | None:
+    query = """
+            SELECT COALESCE(SUM(p.price), 0)
             FROM carts c
             JOIN products p ON c.name = p.name
             WHERE c.chat_id = $1;
             """
     try:
         async with pool.acquire() as con:
-            total_price = await con.fetchval(query,chat_id)
-            logger.info(f"success return a total price in the cart \n {total_price=}")
+            total_price = await con.fetchval(query, chat_id)
+            if total_price is not None:
+                total_price = int(total_price)
+            logger.info(f"💰 success return a total price in the cart {total_price=}")
             return total_price
     except PostgresError as e:
-        logger.error(f"{e}",exc_info=True)
+        logger.error(f"❌ {e}", exc_info=True)
+        return None
 
 
-async def add_cart(pool:Pool,chat_id:int, name:str) -> None:
+async def add_cart(pool: Pool, chat_id: int, name: str) -> None:
     if not name:
-        logger.warning("there is no name")
+        logger.warning("⚠️ there is no name")
         return
     try:
         async with pool.acquire() as con:
             query = "INSERT INTO carts(chat_id,name) VALUES($1,$2)"
-            await con.execute(query,chat_id,name)
-            logger.info(f"add to cart:{chat_id=},{name=}")
+            await con.execute(query, chat_id, name)
+            logger.info(f"🛒 add to cart: {chat_id=}, {name=}")
     except PostgresError as e:
-        logger.error(f"{e}",exc_info=True)  
+        logger.error(f"❌ {e}", exc_info=True)
 
 
-async def check_user_cart(pool:Pool, chat_id:int, name:str) -> bool:
+async def check_user_cart(pool: Pool, chat_id: int, name: str) -> bool:
     if not name or not chat_id:
         return False
     query = """
@@ -143,110 +208,61 @@ async def check_user_cart(pool:Pool, chat_id:int, name:str) -> bool:
             """
     try:
         async with pool.acquire() as con:
-            res = await con.fetchval(query,chat_id,name)
+            res = await con.fetchval(query, chat_id, name)
     except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)
+        logger.warning(f"⚠️ {e}", exc_info=True)
         return False
     logger.debug(f"{res=}")
-    return bool(res) 
-        
+    return bool(res)
 
-async def show_names_cart(pool:Pool, chat_id:int) -> list[str] | None:
+
+async def show_names_cart(pool: Pool, chat_id: int) -> list[str] | None:
     if not chat_id:
-        logger.warning("not have chat_id")
-        return 
+        logger.warning("⚠️ not have chat_id")
+        return
     query = """
             SELECT name FROM carts WHERE chat_id = $1;
             """
     try:
         async with pool.acquire() as con:
-            rows = await con.fetch(query,chat_id)
+            rows = await con.fetch(query, chat_id)
             names = [row["name"] for row in rows]
             logger.debug(f"{names=}")
             return names
     except PostgresError as e:
-        logger.warning(f"don't get a products" 
-                       f"from cart for {chat_id=}\n{e}",exc_info=True)
-        return 
+        logger.warning(f"⚠️ don't get products from cart for {chat_id=}\n{e}", exc_info=True)
+        return
 
 
-async def del_product_cart(pool:Pool, chat_id:int, name:str) -> bool:
+async def del_product_cart(pool: Pool, chat_id: int, name: str) -> bool:
     query = """
             DELETE FROM carts WHERE chat_id = $1 AND name = $2
             """
     try:
         async with pool.acquire() as con:
-            await con.execute(query,chat_id,name)
-            logger.info(f"{chat_id=} deleted to the {name}")
+            await con.execute(query, chat_id, name)
+            logger.info(f"🗑️ {chat_id=} deleted {name}")
             return True
     except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)
+        logger.warning(f"⚠️ {e}", exc_info=True)
         return False
 
 
-async def show_balance(pool:Pool, chat_id:int) -> float | None:
-    if not chat_id:
-        logger.warning("there is no name")
-        return 
-    query = "SELECT balance FROM users WHERE chat_id = $1"
-    try:
-        async with pool.acquire() as con:
-            balance = await con.fetchval(query,chat_id)
-            logger.debug(f"{chat_id=}\nbalance ${balance}")
-            return balance
-    except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)
-
-
-async def show_inventory(pool:Pool,chat_id:int) -> str | None:
-    query = """
-            SELECT inventory FROM users WHERE chat_id = $1;
-            """
-    try:
-        async with pool.acquire() as con:
-            inventory = await con.fetchval(query,chat_id)
-            logger.debug(f"{inventory=}")
-            return inventory
-    except DataError as e:
-        logger.warning(f"{e}",exc_info=True)
-    except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)
-    
-
-async def change_balance(pool:Pool, chat_id:int, balance:float,pay:float) -> bool:
-    if balance + pay < 0.0:
-        logger.warning(f"balance + top_up < 0\n {balance=},{pay=}")
-        return False
-    new_balance = balance + pay
-    query = """
-            UPDATE users SET balance = $1 WHERE chat_id = $2;
-            """
-    try:
-        async with pool.acquire() as con:
-            await con.execute(query,new_balance,chat_id)
-            logger.info(f"success update a balance from {balance} to {new_balance}")
-            return True
-    except PostgresError as e:
-        logger.warning(f"can't to change a balance {e}",exc_info=True)
-        return False
-
-    
 async def buy_product(
-        pool:Pool, 
-        chat_id:int,
-        names:list[str], 
-        price:float, 
-        balance: float
-        ) -> bool:
-    
+    pool: Pool,
+    chat_id: int,
+    names: list[str],
+    price: int,
+    balance: int,
+) -> bool:
     if not names:
-        logger.warning("not have a products in the carts")
+        logger.warning("⚠️ no products in the cart")
         return False
-    if not await change_balance(pool,chat_id,balance,price):
-        logger.warning("don't withdraw funds")
+    if not await change_balance(pool, chat_id, balance, price):
+        logger.warning("⚠️ don't withdraw funds")
         return False
     query_update = """
-            UPDATE users SET inventory = inventory || $1 WHERE chat_id = $2;;
+            UPDATE users SET inventory = inventory || $1 WHERE chat_id = $2;
             """
     query_delete = """
                 DELETE FROM carts WHERE chat_id = $1;
@@ -254,29 +270,50 @@ async def buy_product(
     try:
         async with pool.acquire() as con:
             async with con.transaction():
-                await con.execute(query_update,names,chat_id)
-                await con.execute(query_delete,chat_id)
-                logger.success(f"User:{chat_id} pay products")
+                await con.execute(query_update, names, chat_id)
+                await con.execute(query_delete, chat_id)
+                logger.success(f"✅ User: {chat_id} paid for products")
                 return True
-    except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)
+    except (PostgresError, DataError, InterfaceError) as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
         return False
-    
 
-async def search_by_tags(pool:Pool,tags:str) -> list[str] | None:
+
+# ============================================================
+#                  BALANCE
+# ============================================================
+
+
+async def show_balance(pool: Pool, chat_id: int) -> int | None:
+    if not chat_id:
+        logger.warning("⚠️ there is no chat_id")
+        return
+    query = "SELECT balance FROM users WHERE chat_id = $1"
+    try:
+        async with pool.acquire() as con:
+            balance = await con.fetchval(query, chat_id)
+            if balance is not None:
+                balance = int(balance)
+            logger.debug(f"{chat_id=}\nbalance ${balance}")
+            return balance
+    except PostgresError as e:
+        logger.warning(f"⚠️ {e}", exc_info=True)
+        return None
+
+
+async def change_balance(pool: Pool, chat_id: int, balance: int, pay: int) -> bool:
+    if balance + pay < 0:
+        logger.warning(f"⚠️ balance + top_up < 0 {balance=}, {pay=}")
+        return False
+    new_balance = balance + pay
     query = """
-            SELECT name 
-            FROM products 
-            WHERE tags ILIKE $1;
+            UPDATE users SET balance = $1 WHERE chat_id = $2;
             """
     try:
         async with pool.acquire() as con:
-            names = await con.fetch(query,tags)
-            logger.debug(f"{names=},{tags=}")
-            return names
-        
-    except DataError as e:
-        logger.warning(f"{e}",exc_info=True)
-        
-    except PostgresError as e:
-        logger.warning(f"{e}",exc_info=True)    
+            await con.execute(query, new_balance, chat_id)
+            logger.info(f"💰 balance updated: {balance} → {new_balance}")
+            return True
+    except (PostgresError, DataError) as e:
+        logger.warning(f"⚠️ can't change balance {e}", exc_info=True)
+        return False
