@@ -10,7 +10,7 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from asyncpg import Pool, PostgresError, DataError
 from loguru import logger
 from config import DEFUALT_IMG
-
+from utils import mappers as utils
 user_router = Router()
 
 
@@ -29,21 +29,21 @@ async def cmd_start(message: Message, pool: Pool) -> None:
     else:
         username = "user"
     text = (
-        f"👋 *Hello, {username}!* Welcome to our Next-Gen Digital Store Bot.\n\n"
+        f"👋 <b>Hello, {username}!</b> Welcome to our Next-Gen Digital Store Bot.\n\n"
         "This bot is a fully automated e-commerce platform designed to give you "
         "a seamless shopping experience right inside Telegram.\n\n"
-        "🛠️ *What this bot can do:*\n"
-        "• *Browse & Discover:* Explore our structured product catalog with up-to-date pricing.\n"
-        "• *Smart Search:* Find specific items instantly using our tag-based search system.\n"
-        "• *Shopping Cart:* Add multiple products to your cart, manage quantities, and review your order.\n"
-        "• *Instant Checkout:* Complete your purchases securely via official Telegram Stars integration.\n\n"
-        "⭐️ *Currency & Payments:*\n"
-        "Please note that all transactions are handled **exclusively using Telegram Stars (⭐️)**. "
+        "🛠️ <b>What this bot can do:</b>\n"
+        "• <b>Browse & Discover:</b> Explore our structured product catalog with up-to-date pricing.\n"
+        "• <b>Smart Search:</b> Find specific items instantly using our tag-based search system.\n"
+        "• <b>Shopping Cart:</b> Add multiple products to your cart, manage quantities, and review your order.\n"
+        "• <b>Instant Checkout:</b> Complete your purchases securely via official Telegram Stars integration.\n\n"
+        "⭐️ <b>Currency & Payments:</b>\n"
+        "Please note that all transactions are handled <b>exclusively using Telegram Stars (⭐️)</b>. "
         "You can easily top up your balance and start shopping right away.\n\n"
-        "💡 *Get Started:* Type /catalog to explore products or /help if you need assistance."
+        "💡 <b>Get Started:</b> Type /catalog to explore products or /help if you need assistance."
     )
     await service.add_user(pool, message.chat.id, username)
-    await message.reply(text=text, parse_mode="Markdown", reply_markup=ukb.catalog)
+    await message.reply(text=text, parse_mode="HTML", reply_markup=ukb.catalog)
     logger.info(f"👤 New user started: {message.chat.id} (@{username})")
 
 
@@ -90,6 +90,9 @@ async def my_profile(message: Message, pool: Pool) -> None:
 
     balance = int(profile["balance"]) if profile["balance"] is not None else 0
     inventory = profile["inventory"] or "• No items purchased yet"
+
+    if isinstance(inventory,list):
+        inventory = utils.list_to_str(inventory,parse_mode="HTMl")
 
     text = f"""👤 <b>USER PROFILE</b>
 ━━━━━━━━━━━━━━━━━━━
@@ -210,7 +213,7 @@ async def add_cart(callback: CallbackQuery, callback_data: AddCart, pool: Pool) 
         await service.add_cart(pool, chat_id, product_name)
         await callback.message.delete()
         await callback.message.answer(
-            text=f"✅ Added to cart: *{product_name}*", parse_mode="MarkdownV2"
+            text=f"✅ Added to cart: <b>{product_name}</b>", parse_mode="HTML"
         )
         logger.info(f"🛒 Cart add: {chat_id} → {product_name}")
     except (PostgresError, DataError) as e:
@@ -276,8 +279,8 @@ async def del_cart(callback: CallbackQuery, callback_data: DelCart, pool: Pool) 
         await callback.message.answer("⚠️ Product not found in your cart")
         return
     await callback.message.delete()
-    text = f"🗑️ Removed *{product_name}* from the cart"
-    await callback.message.answer(text, parse_mode="MarkdownV2")
+    text = f"🗑️ Removed <b>{product_name}</b> from the cart"
+    await callback.message.answer(text, parse_mode="HTML")
     logger.info(f"🗑️ Cart delete: {chat_id} → {product_name}")
 
 
@@ -359,20 +362,20 @@ async def yes_buy(callback: CallbackQuery, pool: Pool) -> None:
         return
 
     try:
-        await service.buy_product(pool, chat_id, names, total_price, balance)
-    except (PostgresError, DataError) as e:
+        await service.buy_product(pool, chat_id, names, total_price)
+    except (PostgresError, DataError, Exception) as e:
         text = "❌ The transaction did not go through. Please try again."
         await callback.message.answer(text=text)
         logger.warning(f"⚠️ Buy transaction failed: {e}", exc_info=True)
         return
 
     new_balance = balance - total_price
-    inventory = await service.show_inventory(pool, chat_id)
+    names_str = utils.list_to_str(names,parse_mode="HTML")
     text = (
-        f"✅ Purchase successful! You received: *{inventory}*\n"
-        f"💰 Your new balance: ⭐️*{new_balance}*"
+        f"✅ Purchase successful! You received: <b>{names_str}</b>\n"
+        f"💰 Your new balance: ⭐️<b>{new_balance}</b>"
     )
-    await callback.message.answer(text=text, parse_mode="MarkdownV2")
+    await callback.message.answer(text=text, parse_mode="HTML")
     logger.success(f"✅ Purchase completed: {chat_id}, total={total_price}, new_balance={new_balance}")
 
 

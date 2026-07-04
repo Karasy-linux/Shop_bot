@@ -185,7 +185,7 @@ async def set_photo(message: Message, state: FSMContext) -> None:
         logger.warning(f"⚠️ Photo error: {e}", exc_info=True)
         await message.answer(text="❌ Invalid photo. Please send a valid photo.")
         return
-    await message.answer(text=f"✅ Photo set", reply_markup=akb.add_finally_kb)
+    await message.answer(text="✅ Photo set", reply_markup=akb.add_finally_kb)
     logger.debug(f"📸 {photo_id=}, {state=}")
 
 
@@ -339,7 +339,7 @@ async def edit_photo(message: Message, state: FSMContext) -> None:
         logger.warning(f"⚠️ Photo error: {e}", exc_info=True)
         await message.answer(text="❌ Invalid photo. Please send a valid photo.")
         return
-    await message.answer(text=f"✅ Photo set", reply_markup=akb.edit_finally_kb)
+    await message.answer(text="✅ Photo set", reply_markup=akb.edit_finally_kb)
     logger.debug(f"📸 {photo_id=}, {state=}")
 
 

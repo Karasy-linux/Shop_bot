@@ -1,4 +1,4 @@
-from asyncpg import Pool, PostgresError, DataError, InterfaceError, UndefinedFunctionError
+from asyncpg import Pool, PostgresError, DataError, InterfaceError
 from loguru import logger
 from config import DEFUALT_IMG
 
@@ -253,29 +253,39 @@ async def buy_product(
     chat_id: int,
     names: list[str],
     price: int,
-    balance: int,
 ) -> bool:
     if not names:
-        logger.warning("⚠️ no products in the cart")
+        logger.warning(f"⚠️ No products in the cart for user {chat_id}")
         return False
-    if not await change_balance(pool, chat_id, balance, price):
-        logger.warning("⚠️ don't withdraw funds")
-        return False
-    query_update = """
-            UPDATE users SET inventory = inventory || $1 WHERE chat_id = $2;
-            """
-    query_delete = """
-                DELETE FROM carts WHERE chat_id = $1;
-                """
+    query_update_user = """
+        UPDATE users 
+        SET balance = balance - $1, 
+            inventory = inventory || $2 
+        WHERE chat_id = $3;
+    """
+    query_delete_cart = """
+        DELETE FROM carts WHERE chat_id = $1;
+    """
+
     try:
-        async with pool.acquire() as con:
-            async with con.transaction():
-                await con.execute(query_update, names, chat_id)
-                await con.execute(query_delete, chat_id)
-                logger.success(f"✅ User: {chat_id} paid for products")
-                return True
-    except (PostgresError, DataError, InterfaceError) as e:
-        logger.warning(f"⚠️ {e}", exc_info=True)
+        async with pool.acquire() as con:   
+            current_balance = await show_balance(pool,chat_id)
+        
+            if current_balance is None:
+                logger.warning(f"⚠️ User {chat_id} not found in database")
+                return False
+                
+            if current_balance < price:
+                logger.warning(f"⚠️ User {chat_id} insufficient funds. Has: {current_balance}, Needs: {price}")
+                return False
+
+            await con.execute(query_update_user, price, names, chat_id)
+            await con.execute(query_delete_cart, chat_id)
+            logger.success(f"✅ User: {chat_id} successfully paid {price} Stars for products")
+            return True
+
+    except Exception as e:
+        logger.error(f"❌ Transaction failed for user {chat_id}: {e}", exc_info=True)
         return False
 
 

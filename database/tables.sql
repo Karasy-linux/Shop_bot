@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users(
     is_admin BOOLEAN DEFAULT FALSE,
     balance INTEGER DEFAULT 0,
     PRIMARY KEY (chat_id),
-    inventory TEXT
+    inventory TEXT[] NOT NULL DEFAULT '{}'
 );
 
 --carts

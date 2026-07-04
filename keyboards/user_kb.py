@@ -34,7 +34,7 @@ reply_builder.add(KeyboardButton(text="/catalog"))
 reply_builder.add(KeyboardButton(text="/my_cart"))
 reply_builder.add(KeyboardButton(text="/search_by_tag"))
 reply_builder.add(KeyboardButton(text="/top_up"))
-reply_builder.add(KeyboardButton(text="ℹ/help"))
+reply_builder.add(KeyboardButton(text="/help"))
 reply_builder.add(KeyboardButton(text="/my_profile"))
 catalog = reply_builder.as_markup(resize_keyboard=True)
 
