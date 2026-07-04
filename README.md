@@ -3,7 +3,7 @@
 To properly configure the project and set up your backend environment, you need to create two essential files in your root directory: `.env` and `config.py`.
 
 # Installation
-`git clone https://github.com/Karasy-linux/shop_bot.git`git
+`git clone https://github.com/Karasy-linux/shop_bot.git`
 
 ### 1. Environment Variables (`.env`)
 The `.env` file acts as a secure storage for your private credentials and sensitive data. Create this file in the root directory and define the variables exactly in this format:
