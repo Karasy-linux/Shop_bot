@@ -38,5 +38,6 @@ DB_USER = "bot_user"
 DB_NAME = "shop_bot"
 DB_HOST = "127.0.0.1"
 DB_PORT = "5432"
+```
 
 The bot itself, too https://t.me/shoppere_bot
