@@ -40,4 +40,4 @@ DB_HOST = "127.0.0.1"
 DB_PORT = "5432"
 ```
 
-The bot itself, too https://t.me/shoppere_bot
+The bot itself, too [shop_bot](https://t.me/shoppere_bot)
